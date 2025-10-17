@@ -1,0 +1,109 @@
+
+// 📊 MEDIDAS DAX ESSENCIAIS PARA DASHBOARD DE VAREJO
+
+// KPIs Principais
+Total Vendas = SUM(Dataset_Principal[Valor_Venda])
+
+Qtd Pedidos = DISTINCTCOUNT(Dataset_Principal[ID_Pedido])
+
+Qtd Clientes = DISTINCTCOUNT(Dataset_Principal[ID_Cliente])
+
+Qtd Produtos = DISTINCTCOUNT(Dataset_Principal[ID_Produto])
+
+Ticket Médio = DIVIDE([Total Vendas], [Qtd Pedidos], 0)
+
+// Análises Temporais
+Total Vendas Mês Anterior = 
+CALCULATE(
+    [Total Vendas],
+    DATEADD(Dim_Tempo[Data_Pedido], -1, MONTH)
+)
+
+Crescimento MoM = 
+DIVIDE(
+    [Total Vendas] - [Total Vendas Mês Anterior],
+    [Total Vendas Mês Anterior],
+    0
+) * 100
+
+Total Vendas Ano Anterior = 
+CALCULATE(
+    [Total Vendas],
+    SAMEPERIODLASTYEAR(Dim_Tempo[Data_Pedido])
+)
+
+Crescimento YoY = 
+DIVIDE(
+    [Total Vendas] - [Total Vendas Ano Anterior],
+    [Total Vendas Ano Anterior],
+    0
+) * 100
+
+// Análises de Segmentação
+% Vendas por Segmento = 
+DIVIDE(
+    [Total Vendas],
+    CALCULATE([Total Vendas], ALL(Dim_Cliente[Segmento])),
+    0
+) * 100
+
+% Vendas por Categoria = 
+DIVIDE(
+    [Total Vendas],
+    CALCULATE([Total Vendas], ALL(Dim_Produto[Categoria])),
+    0
+) * 100
+
+// Ranking e Análises Avançadas
+Rank Estado = 
+RANKX(
+    ALL(Dim_Geografia[Estado]),
+    [Total Vendas],
+    ,
+    DESC
+)
+
+Média Móvel 3 Meses = 
+AVERAGEX(
+    DATESINPERIOD(
+        Dim_Tempo[Data_Pedido],
+        LASTDATE(Dim_Tempo[Data_Pedido]),
+        -3,
+        MONTH
+    ),
+    [Total Vendas]
+)
+
+// Indicadores de Performance
+Meta Vendas = [Total Vendas] * 1.1  // Meta 10% acima das vendas atuais
+
+Performance vs Meta = 
+VAR Meta = [Meta Vendas]
+VAR Realizado = [Total Vendas]
+RETURN 
+    IF(
+        Realizado >= Meta,
+        "✅ Acima da Meta",
+        "⚠️ Abaixo da Meta"
+    )
+
+// Análise de Concentração
+Top 10 Estados Vendas = 
+VAR RankAtual = [Rank Estado]
+RETURN 
+    IF(
+        RankAtual <= 10,
+        [Total Vendas],
+        BLANK()
+    )
+
+// Análise Sazonal
+Índice Sazonalidade = 
+VAR VendasMes = [Total Vendas]
+VAR MediaAnual = 
+    CALCULATE(
+        AVERAGE(Dataset_Principal[Valor_Venda]),
+        ALL(Dim_Tempo[Mes])
+    )
+RETURN 
+    DIVIDE(VendasMes, MediaAnual, 0)
